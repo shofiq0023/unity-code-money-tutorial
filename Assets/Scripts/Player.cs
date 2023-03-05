@@ -4,32 +4,43 @@ using UnityEngine;
 
 public class Player : MonoBehaviour {
     [SerializeField] private float moveSpeed = 8f;
+    [SerializeField] private GameInput gameInput;
 
     private bool isWalking;
 
     private void Update() {
-        Vector2 inputVector = new Vector2(0, 0);
-
-        if (Input.GetKey(KeyCode.W)) {
-            inputVector.y = +1;
-        }
-        if (Input.GetKey(KeyCode.S)) {
-            inputVector.y = -1;
-        }
-        if (Input.GetKey(KeyCode.A)) {
-            inputVector.x = -1;
-        }
-        if (Input.GetKey(KeyCode.D)) {
-            inputVector.x = +1;
-        }
-
-        inputVector = inputVector.normalized;
+        Vector2 inputVector = gameInput.GetInputSystemMovementNormalized();
 
         Vector3 moveDir = new Vector3(inputVector.x, 0f, inputVector.y);
-        transform.position += moveDir * moveSpeed * Time.deltaTime;
+
+        float playerRadius = .7f;
+        float playerHeight = 2f;
+        float moveDistance = moveSpeed * Time.deltaTime;
+
+        bool canMove = !Physics.CapsuleCast(transform.position, transform.position + Vector3.up * playerHeight, playerRadius, moveDir, moveDistance);
+
+        if (!canMove) {
+            // try moving X
+            Vector3 moveDirX = new Vector3(moveDir.x, 0, 0).normalized;
+            canMove = !Physics.CapsuleCast(transform.position, transform.position + Vector3.up * playerHeight, playerRadius, moveDirX, moveDistance);
+
+            if (canMove) {
+                moveDir = moveDirX;
+            } else {
+                Vector3 moveDirZ = new Vector3(0, 0, moveDir.z).normalized;
+                canMove = !Physics.CapsuleCast(transform.position, transform.position + Vector3.up * playerHeight, playerRadius, moveDirZ, moveDistance);
+
+                if (canMove) {
+                    moveDir = moveDirZ;
+                }
+            }
+        }
+
+        if (canMove) {
+            transform.position += moveDir * moveDistance;
+        }
 
         isWalking = moveDir != Vector3.zero;
-
         float rotationSpeed = 10f;
         transform.forward = Vector3.Slerp(transform.forward, moveDir, Time.deltaTime * rotationSpeed);
     }
